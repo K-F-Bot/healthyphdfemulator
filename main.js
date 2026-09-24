@@ -320,7 +320,7 @@ async function loadCommentCountsForPosts() {
     // counts のキーは postId。uid から postId を抽出して件数を反映
     allUids.forEach(uid => {
       // uid = 'latest-abc123' or 'search-abc123' or 'ranking-abc123' or 'abc123'
-      const postId = uid.replace(/^(latest|search|ranking)-/, '');
+      const postId = uid.replace(/^(latest|search|ranking|commentranking)-/, '');
       updateCommentCount(uid, counts[postId] || 0);
     });
   } catch (e) {
