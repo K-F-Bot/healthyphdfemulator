@@ -282,6 +282,21 @@ function updateCommentCount(postId, count) {
   el.textContent = count > 0 ? `${count} 件` : 'コメント';
 }
 
+// ──────────────────────────────────────────────
+// 全カードのコメント数を一括取得して表示
+// ──────────────────────────────────────────────
+
+async function loadCommentCountsForPosts() {
+  try {
+    const counts = await apiGet({ action: 'getCommentCounts' });
+    Object.entries(counts).forEach(([postId, count]) => {
+      updateCommentCount(postId, count);
+    });
+  } catch (e) {
+    // コメント数取得失敗時はサイレントに無視（表示は「コメント」のまま）
+  }
+}
+
 async function submitComment(postId) {
   const authorEl = document.getElementById('comment-author-' + postId);
   const bodyEl = document.getElementById('comment-body-' + postId);
@@ -431,6 +446,7 @@ async function loadLatestPosts() {
       return;
     }
     container.innerHTML = '<div class="posts-grid">' + posts.map(p => buildPostCard(p)).join('') + '</div>';
+    loadCommentCountsForPosts();
   } catch (e) {
     container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>データの読み込みに失敗しました。</p><p style="font-size:12px;margin-top:8px">GAS_URLが正しく設定されているか確認してください。</p></div>`;
   }
@@ -455,6 +471,7 @@ async function doSearch() {
       return;
     }
     container.innerHTML = '<div class="posts-grid">' + posts.map(p => buildPostCard(p)).join('') + '</div>';
+    loadCommentCountsForPosts();
   } catch (e) {
     container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div>検索に失敗しました</div>';
   }
@@ -476,6 +493,7 @@ async function loadRanking() {
       return;
     }
     container.innerHTML = '<div class="posts-grid">' + posts.map((p, i) => buildPostCard(p, i + 1)).join('') + '</div>';
+    loadCommentCountsForPosts();
   } catch (e) {
     container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div>読み込みに失敗しました</div>';
   }
