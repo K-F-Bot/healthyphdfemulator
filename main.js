@@ -207,7 +207,7 @@ function buildPostCard(post, rankNum) {
         ❤️ <span id="like-count-${post.id}">${post.likes}</span>
       </button>
       <button class="comment-toggle-btn" id="comment-toggle-${post.id}" onclick="toggleComments('${post.id}')">
-        💬 <span id="comment-count-${post.id}">コメント</span>
+        💬 <span id="comment-count-${post.id}">…</span>
       </button>
     </div>
     <div class="card-edit-actions">
@@ -279,7 +279,7 @@ async function loadComments(postId) {
 function updateCommentCount(postId, count) {
   const el = document.getElementById('comment-count-' + postId);
   if (!el) return;
-  el.textContent = count > 0 ? `${count} 件` : 'コメント';
+  el.textContent = `${count} 件`;
 }
 
 // ──────────────────────────────────────────────
@@ -287,13 +287,22 @@ function updateCommentCount(postId, count) {
 // ──────────────────────────────────────────────
 
 async function loadCommentCountsForPosts() {
+  // 現在表示されているすべての投稿カードのpostIdを収集
+  const allPostIds = Array.from(document.querySelectorAll('[id^="comment-count-"]'))
+    .map(el => el.id.replace('comment-count-', ''));
+
   try {
     const counts = await apiGet({ action: 'getCommentCounts' });
-    Object.entries(counts).forEach(([postId, count]) => {
-      updateCommentCount(postId, count);
+    // APIから返ってきた件数を反映
+    allPostIds.forEach(postId => {
+      updateCommentCount(postId, counts[postId] || 0);
     });
   } catch (e) {
-    // コメント数取得失敗時はサイレントに無視（表示は「コメント」のまま）
+    // コメント数取得失敗時は「?」を表示
+    allPostIds.forEach(postId => {
+      const el = document.getElementById('comment-count-' + postId);
+      if (el) el.textContent = '?';
+    });
   }
 }
 
