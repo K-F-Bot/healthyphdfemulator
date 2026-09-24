@@ -1113,4 +1113,39 @@ img {
   .page-size-bar {
     justify-content: flex-start;
   }
+}
+
+/* ── 投稿 ID バッジ ── */
+.post-id-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  background: rgba(79, 142, 247, 0.12);
+  border: 1px solid rgba(79, 142, 247, 0.3);
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: 'Inter', monospace;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: background var(--transition), border-color var(--transition);
+  user-select: none;
+}
+.post-id-badge:hover {
+  background: rgba(79, 142, 247, 0.25);
+  border-color: var(--accent);
+}
+
+/* ── ID 検索結果ラベル ── */
+.search-id-note {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 4px 12px;
+  background: rgba(124, 92, 247, 0.15);
+  border: 1px solid rgba(124, 92, 247, 0.4);
+  border-radius: 20px;
+  font-size: 13px;
+  color: var(--accent2);
+  font-weight: 500;
 }

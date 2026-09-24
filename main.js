@@ -3,7 +3,7 @@
    ================================================ */
 
 // ★★ デプロイ後に GAS の ウェブアプリURL をここに貼り付けてください ★★
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbws9y-CrIdkmlk8GL4tsZG0q6DqMY3Qk9lyPvkQ0vnFI_p4WPtpGqu8YzM-8yyiGLP2bA/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbx4zDFwlP-2vV70hILchhjNOwAlPj5fMNsZh3MrwTXsjLba7MmlLwy2Z156xYzwf_8lyA/exec';
 
 // ──────────────────────────────────────────────
 // ページネーション グローバル状態
@@ -155,6 +155,10 @@ function buildPostCard(post, rankNum, tabId) {
     ? `💡 ${post.whatToDo.slice(0, 120)}${post.whatToDo.length > 120 ? '…' : ''}`
     : (post.what || '').slice(0, 100);
 
+  // バッジ表示：数値IDはそのまま、UUIDは先頭8文字
+  const isNumericId = post.id && /^\d+$/.test(String(post.id));
+  const displayId = post.id ? (isNumericId ? String(post.id) : String(post.id).slice(0, 8)) : '';
+
   return `
 <div class="post-card${rankCardClass}" id="card-${uid}" onclick="toggleCard('${uid}')">
   <div class="card-header">
@@ -162,7 +166,9 @@ function buildPostCard(post, rankNum, tabId) {
     <div class="card-header-text">
       <div class="card-title">${escHtml(post.title || '（タイトルなし）')}</div>
       <div class="card-tags">${tagBadges || '<span style="color:var(--text-sub);font-size:12px">タグなし</span>'}</div>
-      <div class="card-meta">投稿日: ${formatDate(post.createdAt)}${post.updatedAt !== post.createdAt ? ' （編集済み）' : ''}</div>
+      <div class="card-meta">投稿日: ${formatDate(post.createdAt)}${post.updatedAt !== post.createdAt ? ' （編集済み）' : ''}
+        <span class="post-id-badge" title="投稿 ID: ${escHtml(String(post.id))}" onclick="event.stopPropagation();copyPostId('${escHtml(String(post.id))}')">ID.${displayId}</span>
+      </div>
     </div>
   </div>
 
@@ -433,6 +439,18 @@ async function likePost(id, uid) {
 }
 
 // ──────────────────────────────────────────────
+// 投稿IDをクリップボードにコピー
+// ──────────────────────────────────────────────
+
+function copyPostId(id) {
+  navigator.clipboard.writeText(id).then(() => {
+    showToast('IDをコピーしました 📋');
+  }).catch(() => {
+    showToast('ID: ' + id);
+  });
+}
+
+// ──────────────────────────────────────────────
 // タグクリックで検索タブに移動して検索
 // ──────────────────────────────────────────────
 
@@ -480,12 +498,12 @@ function buildPagination(total, page, size, onPageChange) {
   if (totalPages <= 1) return '';
 
   const from = page * size + 1;
-  const to   = Math.min((page + 1) * size, total);
+  const to = Math.min((page + 1) * size, total);
 
   // 表示するページ番号の範囲（現在ページを中心に最大10個）
   const windowSize = 5;
   let startPage = Math.max(0, page - Math.floor(windowSize / 2));
-  let endPage   = Math.min(totalPages - 1, startPage + windowSize - 1);
+  let endPage = Math.min(totalPages - 1, startPage + windowSize - 1);
   if (endPage - startPage < windowSize - 1) startPage = Math.max(0, endPage - windowSize + 1);
 
   const buttons = [];
@@ -555,11 +573,8 @@ async function loadLatestPosts(page) {
 }
 
 // ──────────────────────────────────────────────
-// タグ検索
-// ──────────────────────────────────────────────
-
-// ──────────────────────────────────────────────
-// タグ検索
+// タグ検索 / ID検索
+// 入力が "id:xxxx" 形式のときは ID 検索に切り替える
 // ──────────────────────────────────────────────
 
 async function doSearch(page) {
@@ -569,7 +584,30 @@ async function doSearch(page) {
   const container = document.getElementById('search-results');
   if (!input || !container) return;
 
-  const tag = input.value.trim();
+  const raw = input.value.trim();
+
+  // ── ID 検索モード: "id:" または "#id:" で始まる場合 ──
+  const idMatch = raw.match(/^(?:#?id:)(.+)/i);
+  if (idMatch) {
+    const searchId = idMatch[1].trim();
+    container.innerHTML = '<div class="loading"><div class="loading-spinner"></div>ID検索中…</div>';
+    try {
+      const res = await apiGet({ action: 'getPostById', id: searchId });
+      if (res.error || !res.item) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔍</div>ID 「${escHtml(searchId)}」に一致する投稿が見つかりません</div>`;
+        return;
+      }
+      const cards = buildPostCard(res.item, undefined, 'search');
+      container.innerHTML = `<div class="search-id-note">🎯 ID検索結果</div><div class="posts-grid">${cards}</div>`;
+      loadCommentCountsForPosts();
+    } catch (e) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div>ID検索に失敗しました</div>';
+    }
+    return;
+  }
+
+  // ── タグ検索モード ──
+  const tag = raw;
   container.innerHTML = '<div class="loading"><div class="loading-spinner"></div>検索中…</div>';
 
   try {
@@ -816,8 +854,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const active = document.querySelector('.tab-btn.active');
         if (active) {
           const name = active.dataset.tab;
-          if (name === 'latest')  loadLatestPosts(0);
-          if (name === 'search')  doSearch(0);
+          if (name === 'latest') loadLatestPosts(0);
+          if (name === 'search') doSearch(0);
           if (name === 'ranking') loadRanking(0);
         }
       });
@@ -829,9 +867,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = btn.dataset.tab;
         switchTab(name);
         tabPage[name] = 0; // タブ切り替え時は先頭ページに戻す
-        if (name === 'latest')          loadLatestPosts(0);
-        if (name === 'ranking')         loadRanking(0);
-        if (name === 'commentRanking')  loadCommentRanking(0);
+        if (name === 'latest') loadLatestPosts(0);
+        if (name === 'ranking') loadRanking(0);
+        if (name === 'commentRanking') loadCommentRanking(0);
       });
     });
 

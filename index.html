@@ -40,7 +40,7 @@
   <!-- タブ -->
   <div class="tabs" role="tablist">
     <button class="tab-btn" id="tab-latest"         data-tab="latest"         role="tab">🕐 最新の投稿</button>
-    <button class="tab-btn" id="tab-search"         data-tab="search"         role="tab">🔍 タグ検索</button>
+    <button class="tab-btn" id="tab-search"         data-tab="search"         role="tab">🔍 タグ / ID 検索</button>
     <button class="tab-btn" id="tab-ranking"        data-tab="ranking"        role="tab">🏆 いいねランキング</button>
     <button class="tab-btn" id="tab-commentRanking" data-tab="commentRanking" role="tab">💬 コメント数ランキング</button>
   </div>
@@ -59,7 +59,7 @@
         type="text"
         class="search-input"
         id="search-input"
-        placeholder="タグを入力して検索（例：#指導教員 #論文 ）"
+        placeholder="タグ検索（例：#論文）または ID 検索（例：id:42）"
         aria-label="タグ検索"
       >
       <button class="btn btn-primary" onclick="doSearch()" id="search-btn">検索</button>
