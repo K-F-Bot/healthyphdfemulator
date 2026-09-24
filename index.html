@@ -39,9 +39,10 @@
 
   <!-- タブ -->
   <div class="tabs" role="tablist">
-    <button class="tab-btn" id="tab-latest"  data-tab="latest"  role="tab">🕐 最新の投稿</button>
-    <button class="tab-btn" id="tab-search"  data-tab="search"  role="tab">🔍 タグ検索</button>
-    <button class="tab-btn" id="tab-ranking" data-tab="ranking" role="tab">🏆 いいねランキング</button>
+    <button class="tab-btn" id="tab-latest"         data-tab="latest"         role="tab">🕐 最新の投稿</button>
+    <button class="tab-btn" id="tab-search"         data-tab="search"         role="tab">🔍 タグ検索</button>
+    <button class="tab-btn" id="tab-ranking"        data-tab="ranking"        role="tab">🏆 いいねランキング</button>
+    <button class="tab-btn" id="tab-commentRanking" data-tab="commentRanking" role="tab">💬 コメント数ランキング</button>
   </div>
 
   <!-- 最新投稿パネル -->
@@ -63,6 +64,13 @@
       >
       <button class="btn btn-primary" onclick="doSearch()" id="search-btn">検索</button>
     </div>
+    <!-- ソートボタン -->
+    <div class="sort-bar">
+      <span class="sort-label">並び順：</span>
+      <button class="sort-btn active" data-sort="newest" id="sort-newest">🕒 新着順</button>
+      <button class="sort-btn" data-sort="likes"  id="sort-likes" >❤️ いいね順</button>
+      <button class="sort-btn" data-sort="comments" id="sort-comments">💬 コメント数順</button>
+    </div>
     <div id="search-results">
       <div class="empty-state">
         <div class="empty-state-icon">🔍</div>
@@ -74,6 +82,13 @@
   <!-- ランキングパネル -->
   <div class="tab-panel" id="panel-ranking" role="tabpanel">
     <div id="ranking-posts">
+      <div class="loading"><div class="loading-spinner"></div>読み込み中…</div>
+    </div>
+  </div>
+
+  <!-- コメント数ランキングパネル -->
+  <div class="tab-panel" id="panel-commentRanking" role="tabpanel">
+    <div id="comment-ranking-posts">
       <div class="loading"><div class="loading-spinner"></div>読み込み中…</div>
     </div>
   </div>

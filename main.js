@@ -12,7 +12,10 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbws9y-CrIdkmlk8GL4tsZG0
 let pageSize = 20; // ページあたりの表示件数
 
 // 各タブの現在ページ（ゼロ始まり）
-const tabPage = { latest: 0, search: 0, ranking: 0 };
+const tabPage = { latest: 0, search: 0, ranking: 0, commentRanking: 0 };
+
+// 検索タブの現在ソート順
+let searchSort = 'newest'; // 'newest' | 'likes' | 'comments'
 
 
 // 指数バックオフでリトライ (最大 MAX_RETRIES 回)
@@ -570,7 +573,7 @@ async function doSearch(page) {
   container.innerHTML = '<div class="loading"><div class="loading-spinner"></div>検索中…</div>';
 
   try {
-    const res = await apiGet({ action: 'searchByTag', tag, offset: page * pageSize, limit: pageSize });
+    const res = await apiGet({ action: 'searchByTag', tag, offset: page * pageSize, limit: pageSize, sort: searchSort });
     if (!res.items || !res.items.length) {
       container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔍</div>「${escHtml(tag)}」に一致する投稿がありません</div>`;
       return;
@@ -583,6 +586,21 @@ async function doSearch(page) {
   } catch (e) {
     container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div>検索に失敗しました</div>';
   }
+}
+
+// ──────────────────────────────────────────────
+// 検索ソート切り替え
+// ──────────────────────────────────────────────
+
+function setSearchSort(sort) {
+  searchSort = sort;
+  // ソートボタンの見た目を更新
+  document.querySelectorAll('.sort-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.sort === sort);
+  });
+  // ページリセットして再検索
+  tabPage.search = 0;
+  doSearch(0);
 }
 
 // ──────────────────────────────────────────────
@@ -606,6 +624,39 @@ async function loadRanking(page) {
     const globalOffset = page * pageSize;
     const cards = res.items.map((p, i) => buildPostCard(p, globalOffset + i + 1, 'ranking')).join('');
     const pager = buildPagination(res.total, page, pageSize, 'loadRanking');
+    container.innerHTML = '<div class="posts-grid">' + cards + '</div>' + pager;
+    loadCommentCountsForPosts();
+    if (page > 0) container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div>読み込みに失敗しました</div>';
+  }
+}
+
+// ──────────────────────────────────────────────
+// コメント数ランキング
+// ──────────────────────────────────────────────
+
+async function loadCommentRanking(page) {
+  if (page === undefined) page = tabPage.commentRanking;
+  tabPage.commentRanking = page;
+  const container = document.getElementById('comment-ranking-posts');
+  if (!container) return;
+
+  container.innerHTML = '<div class="loading"><div class="loading-spinner"></div>読み込み中…</div>';
+  try {
+    const res = await apiGet({ action: 'getCommentRanking', offset: page * pageSize, limit: pageSize });
+    if (!res.items || !res.items.length) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💬</div>まだ投稿がありません</div>';
+      return;
+    }
+    const globalOffset = page * pageSize;
+    const cards = res.items.map((p, i) => {
+      const rankNum = globalOffset + i + 1;
+      const uid = `commentranking-${p.id}`;
+      const cardHtml = buildPostCard(p, rankNum, 'commentranking');
+      return cardHtml;
+    }).join('');
+    const pager = buildPagination(res.total, page, pageSize, 'loadCommentRanking');
     container.innerHTML = '<div class="posts-grid">' + cards + '</div>' + pager;
     loadCommentCountsForPosts();
     if (page > 0) container.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -676,8 +727,10 @@ async function initEditForm() {
   document.getElementById('edit-id').value = id;
 
   try {
-    const posts = await apiGet({ action: 'getPosts' });
-    const post = posts.find(p => p.id === id);
+    // getPosts はページネーション対応で { items: [...], total: N } を返す。
+    // 編集対象は1件だけなので limit=1000 で全件取得して id で絞り込む
+    const res = await apiGet({ action: 'getPosts', offset: 0, limit: 1000 });
+    const post = (res.items || []).find(p => p.id === id);
     if (!post) { showToast('投稿が見つかりません', 'error'); return; }
 
     const form = document.getElementById('edit-form');
@@ -776,9 +829,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = btn.dataset.tab;
         switchTab(name);
         tabPage[name] = 0; // タブ切り替え時は先頭ページに戻す
-        if (name === 'latest')  loadLatestPosts(0);
-        if (name === 'ranking') loadRanking(0);
+        if (name === 'latest')          loadLatestPosts(0);
+        if (name === 'ranking')         loadRanking(0);
+        if (name === 'commentRanking')  loadCommentRanking(0);
       });
+    });
+
+    // ソートボタン（検索タブ）
+    document.querySelectorAll('.sort-btn').forEach(btn => {
+      btn.addEventListener('click', () => setSearchSort(btn.dataset.sort));
+    });
+    // 初期状態でアクティブなソートボタンを反映
+    document.querySelectorAll('.sort-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.sort === searchSort);
     });
 
     // Enterキーで検索（検索ワード変更時はページリセット）
@@ -802,6 +865,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } else if (tab === 'ranking') {
       loadRanking(0);
+    } else if (tab === 'commentRanking') {
+      loadCommentRanking(0);
     } else {
       loadLatestPosts(0);
     }

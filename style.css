@@ -195,7 +195,46 @@ img {
 .search-bar {
   display: flex;
   gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* ── 検索ソートバー ── */
+.sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.sort-label {
+  font-size: 13px;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+
+.sort-btn {
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-sub);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.sort-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.sort-btn.active {
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
 }
 
 .search-input {
