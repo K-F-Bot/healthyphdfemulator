@@ -489,6 +489,30 @@ img {
   gap: 8px;
 }
 
+.card-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 削除ボタン */
+.btn-danger {
+  background: transparent;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  color: var(--danger);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-danger:hover {
+  background: rgba(247, 111, 111, 0.15);
+  border-color: var(--danger);
+}
+
 /* いいねボタン */
 .like-btn {
   display: inline-flex;

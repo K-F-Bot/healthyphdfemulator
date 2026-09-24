@@ -206,12 +206,13 @@ function buildPostCard(post, rankNum) {
       <button class="like-btn${liked ? ' liked' : ''}" id="like-btn-${post.id}" onclick="likePost('${post.id}')" title="${liked ? 'いいねを取り消す' : 'いいねする'}">
         ❤️ <span id="like-count-${post.id}">${post.likes}</span>
       </button>
-      <button class="comment-toggle-btn" onclick="toggleComments('${post.id}')">
-        💬 コメント
+      <button class="comment-toggle-btn" id="comment-toggle-${post.id}" onclick="toggleComments('${post.id}')">
+        💬 <span id="comment-count-${post.id}">コメント</span>
       </button>
     </div>
-    <div>
+    <div class="card-edit-actions">
       <a href="edit.html?id=${post.id}" class="btn btn-outline btn-sm" onclick="event.stopPropagation()">✏️ 編集</a>
+      <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePost('${post.id}')">🗑️ 削除</button>
     </div>
   </div>
 </div>`;
@@ -259,6 +260,7 @@ async function loadComments(postId) {
   if (!list) return;
   try {
     const comments = await apiGet({ action: 'getComments', postId });
+    updateCommentCount(postId, comments.length);
     if (!comments.length) {
       list.innerHTML = '<div style="color:var(--text-sub);font-size:13px;padding:8px 0">まだコメントはありません</div>';
       return;
@@ -274,6 +276,12 @@ async function loadComments(postId) {
   }
 }
 
+function updateCommentCount(postId, count) {
+  const el = document.getElementById('comment-count-' + postId);
+  if (!el) return;
+  el.textContent = count > 0 ? `${count} 件` : 'コメント';
+}
+
 async function submitComment(postId) {
   const authorEl = document.getElementById('comment-author-' + postId);
   const bodyEl = document.getElementById('comment-body-' + postId);
@@ -285,10 +293,45 @@ async function submitComment(postId) {
     await apiPost({ action: 'addComment', postId, author: authorEl.value.trim() || '匿名', body });
     authorEl.value = '';
     bodyEl.value = '';
-    loadComments(postId);
+    await loadComments(postId);
     showToast('コメントを投稿しました 💬');
   } catch (e) {
     showToast('送信に失敗しました', 'error');
+  }
+}
+
+// ──────────────────────────────────────────────
+// 投稿削除
+// ──────────────────────────────────────────────
+
+async function deletePost(id) {
+  if (!confirm('この投稿を削除しますか？\nこの操作は取り消せません。')) return;
+
+  const card = document.getElementById('card-' + id);
+  if (card) {
+    card.style.opacity = '0.5';
+    card.style.pointerEvents = 'none';
+  }
+
+  try {
+    const res = await apiPost({ action: 'deletePost', id });
+    if (res.success) {
+      showToast('投稿を削除しました 🗑️');
+      if (card) {
+        card.style.transition = 'all 0.4s ease';
+        card.style.transform = 'scale(0.95)';
+        card.style.opacity = '0';
+        setTimeout(() => card.remove(), 400);
+      }
+    } else {
+      throw new Error(res.error || '削除に失敗しました');
+    }
+  } catch (e) {
+    showToast('削除に失敗しました: ' + e.message, 'error');
+    if (card) {
+      card.style.opacity = '1';
+      card.style.pointerEvents = '';
+    }
   }
 }
 
