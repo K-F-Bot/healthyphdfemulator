@@ -6,8 +6,14 @@
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbws9y-CrIdkmlk8GL4tsZG0q6DqMY3Qk9lyPvkQ0vnFI_p4WPtpGqu8YzM-8yyiGLP2bA/exec';
 
 // ──────────────────────────────────────────────
-// API 関数（リトライ付き）
+// ページネーション グローバル状態
 // ──────────────────────────────────────────────
+
+let pageSize = 20; // ページあたりの表示件数
+
+// 各タブの現在ページ（ゼロ始まり）
+const tabPage = { latest: 0, search: 0, ranking: 0 };
+
 
 // 指数バックオフでリトライ (最大 MAX_RETRIES 回)
 const MAX_RETRIES = 3;
@@ -123,7 +129,10 @@ function parseTags(tagStr) {
 // 投稿カードのHTMLを生成
 // ──────────────────────────────────────────────
 
-function buildPostCard(post, rankNum) {
+// tabId: カードが属するタブを識別するプレフィックス（'latest' | 'search' | 'ranking'）
+// 同じ投稿が複数タブに表示されても要素IDが重複しないようにするため
+function buildPostCard(post, rankNum, tabId) {
+  const uid = tabId ? `${tabId}-${post.id}` : post.id; // 要素ID用ユニークキー
   const tags = parseTags(post.tags);
   const liked = isLiked(post.id);
   const tagBadges = tags.map(t =>
@@ -144,7 +153,7 @@ function buildPostCard(post, rankNum) {
     : (post.what || '').slice(0, 100);
 
   return `
-<div class="post-card${rankCardClass}" id="card-${post.id}" onclick="toggleCard('${post.id}')">
+<div class="post-card${rankCardClass}" id="card-${uid}" onclick="toggleCard('${uid}')">
   <div class="card-header">
     ${rankBadgeHtml}
     <div class="card-header-text">
@@ -188,31 +197,31 @@ function buildPostCard(post, rankNum) {
     </div>` : ''}
 
     <!-- コメントセクション -->
-    <div class="comments-section" id="comments-${post.id}" style="display:none">
+    <div class="comments-section" id="comments-${uid}" style="display:none">
       <div class="section-label">💬 コメント</div>
-      <div class="comment-list" id="comment-list-${post.id}">
+      <div class="comment-list" id="comment-list-${uid}">
         <div class="loading" style="padding:16px 0"><div class="loading-spinner" style="width:20px;height:20px;border-width:2px"></div></div>
       </div>
       <div class="comment-form">
-        <input class="comment-author-input" id="comment-author-${post.id}" placeholder="名前（任意）" onclick="event.stopPropagation()">
-        <input class="comment-body-input" id="comment-body-${post.id}" placeholder="コメントを入力…" onclick="event.stopPropagation()">
-        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();submitComment('${post.id}')">送信</button>
+        <input class="comment-author-input" id="comment-author-${uid}" placeholder="名前（任意）" onclick="event.stopPropagation()">
+        <input class="comment-body-input" id="comment-body-${uid}" placeholder="コメントを入力…" onclick="event.stopPropagation()">
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();submitComment('${post.id}','${uid}')">送信</button>
       </div>
     </div>
   </div>
 
   <div class="card-footer" onclick="event.stopPropagation()">
     <div class="card-actions">
-      <button class="like-btn${liked ? ' liked' : ''}" id="like-btn-${post.id}" onclick="likePost('${post.id}')" title="${liked ? 'いいねを取り消す' : 'いいねする'}">
-        ❤️ <span id="like-count-${post.id}">${post.likes}</span>
+      <button class="like-btn${liked ? ' liked' : ''}" id="like-btn-${uid}" onclick="likePost('${post.id}','${uid}')" title="${liked ? 'いいねを取り消す' : 'いいねする'}">
+        ❤️ <span id="like-count-${uid}">${post.likes}</span>
       </button>
-      <button class="comment-toggle-btn" id="comment-toggle-${post.id}" onclick="toggleComments('${post.id}')">
-        💬 <span id="comment-count-${post.id}">…</span>
+      <button class="comment-toggle-btn" id="comment-toggle-${uid}" onclick="toggleComments('${post.id}','${uid}')">
+        💬 <span id="comment-count-${uid}">…</span>
       </button>
     </div>
     <div class="card-edit-actions">
       <a href="edit.html?id=${post.id}" class="btn btn-outline btn-sm" onclick="event.stopPropagation()">✏️ 編集</a>
-      <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePost('${post.id}')">🗑️ 削除</button>
+      <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePost('${post.id}','${uid}')">🗑️ 削除</button>
     </div>
   </div>
 </div>`;
@@ -237,8 +246,9 @@ function escHtml(str) {
 // カード展開/折りたたみ
 // ──────────────────────────────────────────────
 
-function toggleCard(id) {
-  const card = document.getElementById('card-' + id);
+// uid = tabId-postId（または後方互換のために postId のみ）
+function toggleCard(uid) {
+  const card = document.getElementById('card-' + uid);
   if (!card) return;
   card.classList.toggle('expanded');
 }
@@ -247,20 +257,24 @@ function toggleCard(id) {
 // コメントトグル
 // ──────────────────────────────────────────────
 
-function toggleComments(postId) {
-  const section = document.getElementById('comments-' + postId);
+// uid = tabId-postId。コメントの実データ取得には postId を使う
+function toggleComments(postId, uid) {
+  const key = uid || postId;
+  const section = document.getElementById('comments-' + key);
   if (!section) return;
   const isHidden = section.style.display === 'none';
   section.style.display = isHidden ? 'block' : 'none';
-  if (isHidden) loadComments(postId);
+  if (isHidden) loadComments(postId, key);
 }
 
-async function loadComments(postId) {
-  const list = document.getElementById('comment-list-' + postId);
+// uid = tabId-postId（要素ID特定用）
+async function loadComments(postId, uid) {
+  const key = uid || postId;
+  const list = document.getElementById('comment-list-' + key);
   if (!list) return;
   try {
     const comments = await apiGet({ action: 'getComments', postId });
-    updateCommentCount(postId, comments.length);
+    updateCommentCount(key, comments.length);
     if (!comments.length) {
       list.innerHTML = '<div style="color:var(--text-sub);font-size:13px;padding:8px 0">まだコメントはありません</div>';
       return;
@@ -276,8 +290,8 @@ async function loadComments(postId) {
   }
 }
 
-function updateCommentCount(postId, count) {
-  const el = document.getElementById('comment-count-' + postId);
+function updateCommentCount(uid, count) {
+  const el = document.getElementById('comment-count-' + uid);
   if (!el) return;
   el.textContent = `${count} 件`;
 }
@@ -287,28 +301,33 @@ function updateCommentCount(postId, count) {
 // ──────────────────────────────────────────────
 
 async function loadCommentCountsForPosts() {
-  // 現在表示されているすべての投稿カードのpostIdを収集
-  const allPostIds = Array.from(document.querySelectorAll('[id^="comment-count-"]'))
+  // 現在表示されているすべての comment-count 要素を収集
+  // id形式: comment-count-{tabId}-{postId} または comment-count-{postId}
+  const allUids = Array.from(document.querySelectorAll('[id^="comment-count-"]'))
     .map(el => el.id.replace('comment-count-', ''));
 
   try {
     const counts = await apiGet({ action: 'getCommentCounts' });
-    // APIから返ってきた件数を反映
-    allPostIds.forEach(postId => {
-      updateCommentCount(postId, counts[postId] || 0);
+    // counts のキーは postId。uid から postId を抽出して件数を反映
+    allUids.forEach(uid => {
+      // uid = 'latest-abc123' or 'search-abc123' or 'ranking-abc123' or 'abc123'
+      const postId = uid.replace(/^(latest|search|ranking)-/, '');
+      updateCommentCount(uid, counts[postId] || 0);
     });
   } catch (e) {
     // コメント数取得失敗時は「?」を表示
-    allPostIds.forEach(postId => {
-      const el = document.getElementById('comment-count-' + postId);
+    allUids.forEach(uid => {
+      const el = document.getElementById('comment-count-' + uid);
       if (el) el.textContent = '?';
     });
   }
 }
 
-async function submitComment(postId) {
-  const authorEl = document.getElementById('comment-author-' + postId);
-  const bodyEl = document.getElementById('comment-body-' + postId);
+// uid = tabId-postId（要素ID特定用）
+async function submitComment(postId, uid) {
+  const key = uid || postId;
+  const authorEl = document.getElementById('comment-author-' + key);
+  const bodyEl = document.getElementById('comment-body-' + key);
   const body = bodyEl.value.trim();
 
   if (!body) { showToast('コメントを入力してください', 'error'); return; }
@@ -317,7 +336,7 @@ async function submitComment(postId) {
     await apiPost({ action: 'addComment', postId, author: authorEl.value.trim() || '匿名', body });
     authorEl.value = '';
     bodyEl.value = '';
-    await loadComments(postId);
+    await loadComments(postId, key);
     showToast('コメントを投稿しました 💬');
   } catch (e) {
     showToast('送信に失敗しました', 'error');
@@ -328,10 +347,12 @@ async function submitComment(postId) {
 // 投稿削除
 // ──────────────────────────────────────────────
 
-async function deletePost(id) {
+// uid = tabId-postId（要素ID特定用）
+async function deletePost(id, uid) {
   if (!confirm('この投稿を削除しますか？\nこの操作は取り消せません。')) return;
 
-  const card = document.getElementById('card-' + id);
+  const key = uid || id;
+  const card = document.getElementById('card-' + key);
   if (card) {
     card.style.opacity = '0.5';
     card.style.pointerEvents = 'none';
@@ -363,8 +384,10 @@ async function deletePost(id) {
 // いいね
 // ──────────────────────────────────────────────
 
-async function likePost(id) {
-  const btn = document.getElementById('like-btn-' + id);
+// uid = tabId-postId（要素ID特定用）
+async function likePost(id, uid) {
+  const key = uid || id;
+  const btn = document.getElementById('like-btn-' + key);
   const alreadyLiked = isLiked(id);
 
   // APIコール中は重複送信を防ぐためボタンを無効化
@@ -376,7 +399,7 @@ async function likePost(id) {
       const res = await apiPost({ action: 'unlikePost', id });
       if (res.success) {
         unsetLikedPost(id);
-        const count = document.getElementById('like-count-' + id);
+        const count = document.getElementById('like-count-' + key);
         if (btn) {
           btn.classList.remove('liked');
           btn.title = 'いいねする';
@@ -389,7 +412,7 @@ async function likePost(id) {
       const res = await apiPost({ action: 'likePost', id });
       if (res.success) {
         setLikedPost(id);
-        const count = document.getElementById('like-count-' + id);
+        const count = document.getElementById('like-count-' + key);
         if (btn) {
           btn.classList.add('liked');
           btn.title = 'いいねを取り消す';
@@ -443,19 +466,86 @@ function switchTab(name) {
 // 投稿一覧を表示 (index.html)
 // ──────────────────────────────────────────────
 
-async function loadLatestPosts() {
+// ──────────────────────────────────────────────
+// ページネーション UI 生成
+// total: 全件数, page: 現在ページ(0始まり), size: ページあたり件数
+// onPageChange(newPage): ページ変更コールバック
+// ──────────────────────────────────────────────
+
+function buildPagination(total, page, size, onPageChange) {
+  const totalPages = Math.ceil(total / size);
+  if (totalPages <= 1) return '';
+
+  const from = page * size + 1;
+  const to   = Math.min((page + 1) * size, total);
+
+  // 表示するページ番号の範囲（現在ページを中心に最大10個）
+  const windowSize = 5;
+  let startPage = Math.max(0, page - Math.floor(windowSize / 2));
+  let endPage   = Math.min(totalPages - 1, startPage + windowSize - 1);
+  if (endPage - startPage < windowSize - 1) startPage = Math.max(0, endPage - windowSize + 1);
+
+  const buttons = [];
+
+  // 前ページ
+  buttons.push(
+    `<button class="page-btn page-nav" ${page === 0 ? 'disabled' : ''} onclick="(${onPageChange})(${page - 1})">❮</button>`
+  );
+
+  // 先頭に飛ぶ
+  if (startPage > 0) {
+    buttons.push(`<button class="page-btn" onclick="(${onPageChange})(0)">1</button>`);
+    if (startPage > 1) buttons.push('<span class="page-ellipsis">⋯</span>');
+  }
+
+  // ページ番号ボタン
+  for (let i = startPage; i <= endPage; i++) {
+    buttons.push(
+      `<button class="page-btn${i === page ? ' active' : ''}" onclick="(${onPageChange})(${i})">${i + 1}</button>`
+    );
+  }
+
+  // 末尾に飛ぶ
+  if (endPage < totalPages - 1) {
+    if (endPage < totalPages - 2) buttons.push('<span class="page-ellipsis">⋯</span>');
+    buttons.push(`<button class="page-btn" onclick="(${onPageChange})(${totalPages - 1})">${totalPages}</button>`);
+  }
+
+  // 次ページ
+  buttons.push(
+    `<button class="page-btn page-nav" ${page === totalPages - 1 ? 'disabled' : ''} onclick="(${onPageChange})(${page + 1})">❯</button>`
+  );
+
+  return `
+<div class="pagination">
+  <div class="pagination-info">${from}–${to} / 全${total}件</div>
+  <div class="pagination-btns">${buttons.join('')}</div>
+</div>`;
+}
+
+// ──────────────────────────────────────────────
+// 投稿一覧を表示 (index.html)
+// ──────────────────────────────────────────────
+
+async function loadLatestPosts(page) {
+  if (page === undefined) page = tabPage.latest;
+  tabPage.latest = page;
   const container = document.getElementById('latest-posts');
   if (!container) return;
 
   container.innerHTML = '<div class="loading"><div class="loading-spinner"></div>読み込み中…</div>';
   try {
-    const posts = await apiGet({ action: 'getPosts' });
-    if (!posts.length) {
+    const res = await apiGet({ action: 'getPosts', offset: page * pageSize, limit: pageSize });
+    if (!res.items || !res.items.length) {
       container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div>まだ投稿がありません。最初の投稿をしてみましょう！</div>';
       return;
     }
-    container.innerHTML = '<div class="posts-grid">' + posts.map(p => buildPostCard(p)).join('') + '</div>';
+    const cards = res.items.map(p => buildPostCard(p, undefined, 'latest')).join('');
+    const pager = buildPagination(res.total, page, pageSize, 'loadLatestPosts');
+    container.innerHTML = '<div class="posts-grid">' + cards + '</div>' + pager;
     loadCommentCountsForPosts();
+    // ページ切り替え時にスクロールを先頭に戻す
+    if (page > 0) container.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (e) {
     container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>データの読み込みに失敗しました。</p><p style="font-size:12px;margin-top:8px">GAS_URLが正しく設定されているか確認してください。</p></div>`;
   }
@@ -465,7 +555,13 @@ async function loadLatestPosts() {
 // タグ検索
 // ──────────────────────────────────────────────
 
-async function doSearch() {
+// ──────────────────────────────────────────────
+// タグ検索
+// ──────────────────────────────────────────────
+
+async function doSearch(page) {
+  if (page === undefined) { tabPage.search = 0; page = 0; }
+  tabPage.search = page;
   const input = document.getElementById('search-input');
   const container = document.getElementById('search-results');
   if (!input || !container) return;
@@ -474,13 +570,16 @@ async function doSearch() {
   container.innerHTML = '<div class="loading"><div class="loading-spinner"></div>検索中…</div>';
 
   try {
-    const posts = await apiGet({ action: 'searchByTag', tag });
-    if (!posts.length) {
+    const res = await apiGet({ action: 'searchByTag', tag, offset: page * pageSize, limit: pageSize });
+    if (!res.items || !res.items.length) {
       container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔍</div>「${escHtml(tag)}」に一致する投稿がありません</div>`;
       return;
     }
-    container.innerHTML = '<div class="posts-grid">' + posts.map(p => buildPostCard(p)).join('') + '</div>';
+    const cards = res.items.map(p => buildPostCard(p, undefined, 'search')).join('');
+    const pager = buildPagination(res.total, page, pageSize, 'doSearch');
+    container.innerHTML = '<div class="posts-grid">' + cards + '</div>' + pager;
     loadCommentCountsForPosts();
+    if (page > 0) container.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (e) {
     container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div>検索に失敗しました</div>';
   }
@@ -490,19 +589,26 @@ async function doSearch() {
 // いいねランキング
 // ──────────────────────────────────────────────
 
-async function loadRanking() {
+async function loadRanking(page) {
+  if (page === undefined) page = tabPage.ranking;
+  tabPage.ranking = page;
   const container = document.getElementById('ranking-posts');
   if (!container) return;
 
   container.innerHTML = '<div class="loading"><div class="loading-spinner"></div>読み込み中…</div>';
   try {
-    const posts = await apiGet({ action: 'getRanking' });
-    if (!posts.length) {
+    const res = await apiGet({ action: 'getRanking', offset: page * pageSize, limit: pageSize });
+    if (!res.items || !res.items.length) {
       container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏆</div>まだ投稿がありません</div>';
       return;
     }
-    container.innerHTML = '<div class="posts-grid">' + posts.map((p, i) => buildPostCard(p, i + 1)).join('') + '</div>';
+    // ランキング番号は全件数中の順位（offset を考慮）
+    const globalOffset = page * pageSize;
+    const cards = res.items.map((p, i) => buildPostCard(p, globalOffset + i + 1, 'ranking')).join('');
+    const pager = buildPagination(res.total, page, pageSize, 'loadRanking');
+    container.innerHTML = '<div class="posts-grid">' + cards + '</div>' + pager;
     loadCommentCountsForPosts();
+    if (page > 0) container.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (e) {
     container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div>読み込みに失敗しました</div>';
   }
@@ -644,20 +750,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // index.html
   if (currentPage === 'index.html' || currentPage === '') {
+    // 件数セレクタの変更イベント
+    const pageSizeSelect = document.getElementById('page-size-select');
+    if (pageSizeSelect) {
+      pageSizeSelect.value = String(pageSize);
+      pageSizeSelect.addEventListener('change', () => {
+        pageSize = parseInt(pageSizeSelect.value, 10);
+        // 各タブをページリセットして再読み込み
+        tabPage.latest = 0;
+        tabPage.search = 0;
+        tabPage.ranking = 0;
+        const active = document.querySelector('.tab-btn.active');
+        if (active) {
+          const name = active.dataset.tab;
+          if (name === 'latest')  loadLatestPosts(0);
+          if (name === 'search')  doSearch(0);
+          if (name === 'ranking') loadRanking(0);
+        }
+      });
+    }
+
     // タブボタン
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const name = btn.dataset.tab;
         switchTab(name);
-        if (name === 'latest') loadLatestPosts();
-        if (name === 'ranking') loadRanking();
+        tabPage[name] = 0; // タブ切り替え時は先頭ページに戻す
+        if (name === 'latest')  loadLatestPosts(0);
+        if (name === 'ranking') loadRanking(0);
       });
     });
 
-    // Enterキーで検索
+    // Enterキーで検索（検索ワード変更時はページリセット）
     const searchInput = document.getElementById('search-input');
     if (searchInput) {
-      searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+      searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(0); });
     }
 
     // URLパラメータでタブ指定
@@ -669,14 +796,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const tag = params.get('tag');
       if (tag && searchInput) {
         searchInput.value = tag;
-        doSearch();
+        doSearch(0);
       } else {
-        loadLatestPosts(); // fallback
+        loadLatestPosts(0); // fallback
       }
     } else if (tab === 'ranking') {
-      loadRanking();
+      loadRanking(0);
     } else {
-      loadLatestPosts();
+      loadLatestPosts(0);
     }
   }
 
