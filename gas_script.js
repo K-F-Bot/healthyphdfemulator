@@ -264,7 +264,7 @@ function updatePost(data) {
   const now = new Date().toISOString();
 
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0] === data.id) {
+    if (String(rows[i][0]) === String(data.id)) {
       const rowNum = i + 1;
       // 一括で書き込み（setValues）で高速化
       sheet.getRange(rowNum, 3, 1, 13).setValues([[
@@ -299,7 +299,7 @@ function deletePost(id) {
   let deleted = false;
 
   for (let i = 1; i < postRows.length; i++) {
-    if (postRows[i][0] === id) {
+    if (String(postRows[i][0]) === String(id)) {
       postsSheet.deleteRow(i + 1);
       deleted = true;
       break;
@@ -314,7 +314,7 @@ function deletePost(id) {
   const toDelete = [];
 
   for (let i = 1; i < commentRows.length; i++) {
-    if (commentRows[i][1] === id) toDelete.push(i + 1);
+    if (String(commentRows[i][1]) === String(id)) toDelete.push(i + 1);
   }
 
   // 行番号の大きい方から削除
@@ -334,7 +334,7 @@ function likePost(id) {
   const rows = sheet.getDataRange().getValues();
 
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0] === id) {
+    if (String(rows[i][0]) === String(id)) {
       const current = Number(rows[i][15]) || 0;
       sheet.getRange(i + 1, 16).setValue(current + 1);
       invalidateCache();
@@ -352,7 +352,7 @@ function unlikePost(id) {
   const rows = sheet.getDataRange().getValues();
 
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0] === id) {
+    if (String(rows[i][0]) === String(id)) {
       const current = Number(rows[i][15]) || 0;
       // 0未満にはしない
       const newVal = Math.max(0, current - 1);
@@ -373,7 +373,7 @@ function getComments(postId) {
   const result = [];
 
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][1] === postId) {
+    if (String(rows[i][1]) === String(postId)) {
       result.push({
         id: rows[i][0],
         postId: rows[i][1],
