@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>healthy phd student emulator</title>
+  <meta name="description" content="博士課程学生が研究室生活でやってよかったこと・悪かったことを共有するサイト。5W1H形式で体験談を投稿・閲覧できます。">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ヘッダー -->
+<header class="site-header">
+  <div class="header-inner">
+    <a href="index.html" class="site-logo">🎓 healthy <span>phd student</span> emulator</a>
+    <nav class="site-nav">
+      <a href="index.html"  class="nav-link" id="nav-index"><span>📋 </span>投稿一覧</a>
+      <a href="about.html"  class="nav-link" id="nav-about"><span>ℹ️ </span>このサイトについて</a>
+      <a href="post.html"   class="btn-post-nav nav-link">＋ 投稿する</a>
+    </nav>
+  </div>
+</header>
+
+<!-- メイン -->
+<main class="main-content">
+  <h1 class="page-title">📚 研究室体験まとめ</h1>
+  <p class="page-subtitle">博士課程学生の成功・失敗体験を共有し、より良い研究室生活を目指しましょう。</p>
+
+  <!-- タブ -->
+  <div class="tabs" role="tablist">
+    <button class="tab-btn" id="tab-latest"  data-tab="latest"  role="tab">🕐 最新の投稿</button>
+    <button class="tab-btn" id="tab-search"  data-tab="search"  role="tab">🔍 タグ検索</button>
+    <button class="tab-btn" id="tab-ranking" data-tab="ranking" role="tab">🏆 いいねランキング</button>
+  </div>
+
+  <!-- 最新投稿パネル -->
+  <div class="tab-panel" id="panel-latest" role="tabpanel">
+    <div id="latest-posts">
+      <div class="loading"><div class="loading-spinner"></div>読み込み中…</div>
+    </div>
+  </div>
+
+  <!-- タグ検索パネル -->
+  <div class="tab-panel" id="panel-search" role="tabpanel">
+    <div class="search-bar">
+      <input
+        type="text"
+        class="search-input"
+        id="search-input"
+        placeholder="タグを入力して検索（例：#指導教員 #論文 ）"
+        aria-label="タグ検索"
+      >
+      <button class="btn btn-primary" onclick="doSearch()" id="search-btn">検索</button>
+    </div>
+    <div id="search-results">
+      <div class="empty-state">
+        <div class="empty-state-icon">🔍</div>
+        タグを入力してEnterキーを押すか、「検索」ボタンをクリックしてください
+      </div>
+    </div>
+  </div>
+
+  <!-- ランキングパネル -->
+  <div class="tab-panel" id="panel-ranking" role="tabpanel">
+    <div id="ranking-posts">
+      <div class="loading"><div class="loading-spinner"></div>読み込み中…</div>
+    </div>
+  </div>
+</main>
+
+<!-- フッター -->
+<footer class="site-footer">
+  <p>healthy phd student emulator — 研究室の知恵を未来へ</p>
+</footer>
+
+<script src="main.js"></script>
+</body>
+</html>
+

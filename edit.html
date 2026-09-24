@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>投稿を編集 — healthy phd student emulator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ヘッダー -->
+<header class="site-header">
+  <div class="header-inner">
+    <a href="index.html" class="site-logo">🎓 healthy <span>phd student</span> emulator</a>
+    <nav class="site-nav">
+      <a href="index.html" class="nav-link"><span>📋 </span>投稿一覧</a>
+      <a href="about.html" class="nav-link"><span>ℹ️ </span>このサイトについて</a>
+      <a href="post.html"  class="btn-post-nav nav-link">＋ 投稿する</a>
+    </nav>
+  </div>
+</header>
+
+<!-- メイン -->
+<main class="main-content">
+  <h1 class="page-title">✏️ 投稿を編集</h1>
+  <p class="page-subtitle">内容を修正して保存してください。</p>
+
+  <div class="form-card">
+    <form id="edit-form" novalidate>
+      <input type="hidden" id="edit-id">
+
+      <!-- ── タイトル ── -->
+      <div class="form-section-title">📝 タイトル</div>
+      <div class="form-group">
+        <label class="form-label" for="title">タイトル <span class="required">必須</span></label>
+        <input type="text" class="form-input" id="title" name="title"
+          placeholder="例: ゼミでスライドを用意しなかった結果…" required>
+        <div class="form-hint">投稿の内容を一言で表すタイトルをつけてください</div>
+      </div>
+
+      <!-- ── ハッシュタグ ── -->
+      <div class="form-section-title">🏷️ ハッシュタグ</div>
+      <div class="form-group">
+        <label class="form-label" for="tags">
+          ハッシュタグ <span class="required">必須</span>
+        </label>
+        <input type="text" class="form-input" id="tags" name="tags"
+          placeholder="例: #指導教員 #論文 #実験失敗" required>
+        <div class="form-hint">スペース区切りで複数入力できます</div>
+      </div>
+
+      <!-- ── 5W1H + Then ── -->
+      <div class="form-section-title">📋 5W1H + Then（状況説明） <span style="font-weight:400;font-size:12px;color:var(--text-sub)">（任意）</span></div>
+
+      <div class="w5h1-form-grid">
+        <div class="form-group">
+          <label class="form-label" for="when">When（いつ） <span class="optional">任意</span></label>
+          <input type="text" class="form-input" id="when" name="when">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="who">Who（誰が） <span class="optional">任意</span></label>
+          <input type="text" class="form-input" id="who" name="who">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="where">Where（どこで） <span class="optional">任意</span></label>
+          <input type="text" class="form-input" id="where" name="where">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="what">What（何を） <span class="optional">任意</span></label>
+          <input type="text" class="form-input" id="what" name="what">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="why">Why（なぜ） <span class="optional">任意</span></label>
+          <input type="text" class="form-input" id="why" name="why">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="how">How（どうやって） <span class="optional">任意</span></label>
+          <input type="text" class="form-input" id="how" name="how">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="then">Then（その結果） <span class="optional">任意</span></label>
+        <textarea class="form-textarea" id="then" name="then"></textarea>
+      </div>
+
+      <!-- ── 前提条件（任意） ── -->
+      <div class="form-section-title">📌 前提条件 <span style="font-weight:400;font-size:12px;color:var(--text-sub)">（任意）</span></div>
+      <div class="form-group">
+        <label class="form-label" for="prerequisites">前提条件 <span class="optional">任意</span></label>
+        <textarea class="form-textarea" id="prerequisites" name="prerequisites"></textarea>
+      </div>
+
+      <!-- ── どうすればよかったか ── -->
+      <div class="form-section-title">✅ どうすればよかったか</div>
+      <div class="form-group">
+        <label class="form-label" for="whatToDo">どうすればよかったか <span class="required">必須</span></label>
+        <textarea class="form-textarea" id="whatToDo" name="whatToDo" required style="min-height:100px"></textarea>
+      </div>
+
+      <!-- ── 備考（任意） ── -->
+      <div class="form-section-title">📝 備考 <span style="font-weight:400;font-size:12px;color:var(--text-sub)">（任意）</span></div>
+      <div class="form-group">
+        <label class="form-label" for="notes">備考 <span class="optional">任意</span></label>
+        <textarea class="form-textarea" id="notes" name="notes"></textarea>
+      </div>
+
+      <!-- ── ボタン ── -->
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">保存する ✅</button>
+        <a href="index.html" class="btn btn-outline">キャンセル</a>
+      </div>
+
+    </form>
+  </div>
+</main>
+
+<!-- フッター -->
+<footer class="site-footer">
+  <p>healthy phd student emulator — 研究室の知恵を未来へ</p>
+</footer>
+
+<script src="main.js"></script>
+</body>
+</html>
+
