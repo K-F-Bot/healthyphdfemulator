@@ -403,11 +403,25 @@ function getCommentCounts() {
 }
 
 // ──────────────────────────────────────────────
+// 次のコメント連番 ID を返す（既存の数値IDの最大値+1）
+// ──────────────────────────────────────────────
+function getNextCommentId() {
+  const sheet = getSheet(SHEET_NAME_COMMENTS);
+  const rows = sheet.getDataRange().getValues();
+  let maxNum = 0;
+  for (let i = 1; i < rows.length; i++) {
+    const n = parseInt(rows[i][0], 10);
+    if (!isNaN(n) && n > maxNum) maxNum = n;
+  }
+  return String(maxNum + 1);
+}
+
+// ──────────────────────────────────────────────
 // コメントを追加
 // ──────────────────────────────────────────────
 function addComment(data) {
   const sheet = getSheet(SHEET_NAME_COMMENTS);
-  const id = Utilities.getUuid();
+  const id = getNextCommentId(); // 連番ID（1, 2, 3, ...）
   const now = new Date().toISOString();
 
   sheet.appendRow([id, data.postId, now, data.author || '匿名', data.body || '']);
