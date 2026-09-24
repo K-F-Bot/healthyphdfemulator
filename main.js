@@ -768,7 +768,7 @@ async function initEditForm() {
     // getPosts はページネーション対応で { items: [...], total: N } を返す。
     // 編集対象は1件だけなので limit=1000 で全件取得して id で絞り込む
     const res = await apiGet({ action: 'getPosts', offset: 0, limit: 1000 });
-    const post = (res.items || []).find(p => p.id === id);
+    const post = (res.items || []).find(p => String(p.id) === String(id));
     if (!post) { showToast('投稿が見つかりません', 'error'); return; }
 
     const form = document.getElementById('edit-form');
